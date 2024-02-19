@@ -1,12 +1,12 @@
 from django.db import models
+from django.contrib.auth.models import User
 
-class User(models.Model):
-    username = models.CharField(max_length=100, unique=True)
-    name = models.CharField(max_length=100, default='n/a')
-    password = models.CharField(max_length=100)
+class Author(models.Model):
+    user = models.OneToOneField(User, on_delete=models.CASCADE)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
-        return self.username
+        return self.name
 
 class News(models.Model):
     HEADLINE_MAX_LENGTH = 64        # Easy to change the length of the headline
@@ -28,7 +28,7 @@ class News(models.Model):
     headline = models.CharField(max_length=HEADLINE_MAX_LENGTH)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     region = models.CharField(max_length=2, choices=REGION_CHOICES)
-    author = models.ForeignKey(User, on_delete=models.CASCADE)  # Foreign Key to relate News to User - Delete all news if user is deleted
+    author = models.ForeignKey(Author, on_delete=models.CASCADE)  # Foreign Key to relate News to User - Delete all news if user is deleted
     date = models.DateField()
     details = models.CharField(max_length=DETAILS_MAX_LENGTH)
 
