@@ -28,7 +28,7 @@ class News(models.Model):
     headline = models.CharField(max_length=HEADLINE_MAX_LENGTH)
     category = models.CharField(max_length=10, choices=CATEGORY_CHOICES)
     region = models.CharField(max_length=2, choices=REGION_CHOICES)
-    author = models.CharField(max_length=100)  # Assuming author's name is text
+    author = models.ForeignKey(User, on_delete=models.CASCADE)  # Foreign Key to relate News to User - Delete all news if user is deleted
     date = models.DateField()
     details = models.CharField(max_length=DETAILS_MAX_LENGTH)
 
