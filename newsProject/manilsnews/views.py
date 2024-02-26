@@ -35,8 +35,7 @@ def logout_view(request):
         return HttpResponse('Not logged in', status=401)  # Return 401 Unauthorized if user is not logged in
 
 @csrf_exempt
-@login_required
-def post_story(request):
+def stories_view(request):
     print(request.user.username + ' is trying to post') # Print the logged-in user
     print(request.POST)  # Print the POST data
     if request.method == 'POST':
@@ -66,5 +65,62 @@ def post_story(request):
             return JsonResponse({'message': 'CREATED'}, status=201)
         except Exception as e:
             return JsonResponse({'message': str(e)}, status=503)
+    elif request.method == 'GET':
+        try:
+            # Extract query parameters from the request
+            category = request.GET.get('story_cat', '*')
+            region = request.GET.get('story_region', '*')
+            date = request.GET.get('story_date', '*')
+
+            # Retrieve stories based on the provided parameters
+            if category == '*':
+                stories = Stories.objects.all()
+            else:
+                stories = Stories.objects.filter(category=category)
+
+            if region != '*':
+                stories = stories.filter(region=region)
+
+            if date != '*':
+                stories = stories.filter(date__gte=date)
+
+            # Prepare response data
+            response_data = []
+            for story in stories:
+                response_data.append({
+                    'key': story.pk,  # Assuming the primary key is used as the unique key
+                    'headline': story.headline,
+                    'story_cat': story.category,
+                    'story_region': story.region,
+                    'author': story.author.name,
+                    'story_date': str(story.date),  # Convert date to string
+                    'story_details': story.details,
+                })
+
+            if response_data:
+                return JsonResponse({'stories': response_data}, status=200)
+            else:
+                return JsonResponse({'message': 'No stories found'}, status=404)
+        except ValidationError as ve:
+            return JsonResponse({'message': str(ve)}, status=400)  # Bad Request
+        except Exception as e:
+            return JsonResponse({'message': str(e)}, status=500)  # Internal Server Error
     else:
         return JsonResponse({'message': 'Method Not Allowed'}, status=405)
+    
+@csrf_exempt
+@login_required
+def delete_story(request, key):
+    try:
+        # Check if the story exists
+        story = Stories.objects.get(pk=key)
+
+        # Check if the logged-in user is the author of the story
+        if request.user == story.author.user:
+            # Delete the story
+            story.delete()
+            return JsonResponse({'message': 'Story deleted successfully.'}, status=200)
+        else:
+            return JsonResponse({'message': 'Unauthorized to delete this story.'}, status=503)
+    except Exception as e:
+        return JsonResponse({'message': str(e)}, status=503)
