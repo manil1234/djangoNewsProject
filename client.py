@@ -1,5 +1,6 @@
 import requests
 import json
+import urllib.parse
 
 BASE_URL = 'http://localhost:8000/'  # Update with your API base URL
 session = requests.Session()  # Create a session object to maintain the connection and cookies
@@ -17,24 +18,17 @@ REGION_CHOICES = [
 
 def login(input_username, password):
     url = BASE_URL + 'api/login'
+    # Construct the data in application/x-www-form-urlencoded format
     data = {'username': input_username, 'password': password}
-    response = session.post(url, data=data)
-    if response.status_code == 200:
-        print(f'Logged in as {input_username}')
-        return True
-    else:
-        print('Login failed:', response.text)
-        return False
+    encoded_data = urllib.parse.urlencode(data)
+    headers = {'Content-Type': 'application/x-www-form-urlencoded'}
+    response = session.post(url, data=encoded_data, headers=headers)
+    print(response.status_code, ': ', response.text)  # Print server response
     
 def perform_logout():
     url = BASE_URL + 'api/logout'
     response = session.post(url)  # Use session.post instead of requests.post
-    if response.status_code == 200:
-        print(f'Logged out')
-        return True
-    else:
-        print('Logout failed')
-        return False
+    print(response.status_code, ': ', response.text)  # Print server response
 
 def post_story():
     if session.cookies.get('sessionid'):
@@ -73,19 +67,19 @@ def post_story():
 
 def get_stories():
     id_input = input('Enter ID of the news service (press Enter for none): ')
-    id_switch = id_input.strip()
+    id_switch = id_input.strip().upper()
 
     print('Enter the criteria to get stories')
     print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES], ' or * for ALL')
     category = input('Enter category (press Enter for *): ')
-    category = category.strip() if category else '*'
+    category = category.strip().lower() if category else '*'
 
     print('Valid regions:', [choice[0] for choice in REGION_CHOICES], ' or * for ALL')
     region = input('Enter region (press Enter for *): ')
-    region = region.strip() if region else '*'
+    region = region.strip().lower() if region else '*'
 
     date = input('Enter date (YYYY-MM-DD) or * for ALL (press Enter for *): ')
-    date = date.strip() if date else '*'
+    date = date.strip().lower() if date else '*'
 
     if id_switch:
         url = get_agency_url(id_switch)
@@ -232,7 +226,7 @@ def main():
         command = input('• login\n• logout\n• post\n• news\n• delete\n• list\n• register\n- Enter command: ')
         if command.lower() == 'login':
             if session.cookies.get('sessionid'):  # Check if the session cookie exists
-                print(f'Already logged in as {session.cookies.get("sessionid")}')
+                print(f'Already logged in!')
             else:
                 input_username = input('Enter username: ')
                 password = input('Enter password: ')

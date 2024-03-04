@@ -12,19 +12,24 @@ import requests
 @csrf_exempt  # Disable CSRF for this view
 def login_view(request):
     if request.method == 'POST':
-        username = request.POST.get('username')
-        password = request.POST.get('password')
-
-        user = authenticate(request, username=username, password=password)
-        if user is not None:
-            # Authentication successful
-            login(request, user)
-            return HttpResponse('Welcome back ' + username + '!')  # Return 200 OK with welcome message
-        else:
-            # Authentication failed
-            return HttpResponse('Login failed', status=401)  # Return 401 Unauthorized with error message
+        try:
+            # Parse form-urlencoded data
+            username = request.POST.get('username')
+            password = request.POST.get('password')
+            
+            # Perform authentication
+            user = authenticate(request, username=username, password=password)
+            if user is not None:
+                # Authentication successful
+                login(request, user)
+                return HttpResponse(f'Welcome back {username}!', content_type='text/plain', status=200)  # Return plain text response
+            else:
+                # Authentication failed
+                return HttpResponse('Invalid username or password', content_type='text/plain', status=401)  # Return plain text response
+        except Exception as e:
+            return HttpResponse(str(e), content_type='text/plain', status=500)  # Return plain text response for server errors
     else:
-        return HttpResponse('Method Not Allowed', status=405)  # Return 405 Method Not Allowed for non-POST requests
+        return HttpResponse('Method Not Allowed', content_type='text/plain', status=405)  # Return plain text response for non-POST requests
 
 @csrf_exempt  # Disable CSRF for this view
 @login_required
