@@ -19,9 +19,9 @@ from django.urls import path
 from manilsnews import views
 
 urlpatterns = [
-    path('admin/', admin.site.urls),
-    path('login/', views.login_view, name='login'),
-    path('logout/', views.logout_view, name='logout'),
-    path('stories/', views.stories_view, name='stories'),
-    path('stories/<int:key>/', views.delete_story, name='delete_story')
+    path('/admin/', admin.site.urls),
+    path('/api/login', views.login_view, name='login'),
+    path('/api/logout', views.logout_view, name='logout'),
+    path('/api/stories', views.stories_view, name='stories'),
+    path('/api/stories/<int:key>', views.delete_story, name='delete_story')
 ]
