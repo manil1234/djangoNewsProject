@@ -7,6 +7,7 @@ from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from .models import Stories, Author
 import json
+import requests
 
 @csrf_exempt  # Disable CSRF for this view
 def login_view(request):
