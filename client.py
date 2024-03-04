@@ -31,43 +31,36 @@ def perform_logout():
     print(response.status_code, ': ', response.text)  # Print server response
 
 def post_story():
-    if session.cookies.get('sessionid'):
-        url = BASE_URL + 'api/stories'
-        headline = input('Enter headline: ')
-        print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES])
-        category = input('Enter category: ')
-        print('Valid regions:', [choice[0] for choice in REGION_CHOICES])
-        region = input('Enter region: ')
-        details = input('Enter details: ')
-        
-        # Create a dictionary with the JSON data
-        data = {
-            'headline': headline,
-            'category': category,
-            'region': region,
-            'details': details
-        }
-        
-        # Convert the dictionary to a JSON string
-        json_data = json.dumps(data)
-        
-        # Set the Content-Type header to indicate JSON payload
-        headers = {'Content-Type': 'application/json'}
-        
-        # Send the JSON payload with the headers
-        response = session.post(url, data=json_data, headers=headers)
-        
-        if response.status_code == 201:
-            print('Story posted successfully')
-        else:
-            print(f'Failed to post story. Status code: {response.status_code}')
-            print(f'Response: {response.text}')
-    else:
-        print('Not logged in')
+    url = BASE_URL + 'api/stories'
+    headline = input('Enter headline: ')
+    print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES])
+    category = input('Enter category: ')
+    print('Valid regions:', [choice[0] for choice in REGION_CHOICES])
+    region = input('Enter region: ')
+    details = input('Enter details: ')
+    
+    # Create a dictionary with the JSON data
+    data = {
+        'headline': headline,
+        'category': category,
+        'region': region,
+        'details': details
+    }
+    
+    # Convert the dictionary to a JSON string
+    json_data = json.dumps(data)
+    
+    # Set the Content-Type header to indicate JSON payload
+    headers = {'Content-Type': 'application/json'}
+    
+    # Send the JSON payload with the headers
+    response = session.post(url, data=json_data, headers=headers)
+    print(response.status_code, ': ', response.text)  # Print server response
+
 
 def get_stories():
     id_input = input('Enter ID of the news service (press Enter for none): ')
-    id_switch = id_input.strip().upper()
+    id_switch = id_input.strip().upper() if id_input else None
 
     print('Enter the criteria to get stories')
     print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES], ' or * for ALL')
@@ -83,6 +76,8 @@ def get_stories():
 
     if id_switch:
         url = get_agency_url(id_switch)
+        if url is None:
+            return
         fetch_all_agencies = False
     else:
         url = 'https://newssites.pythonanywhere.com/api/directory/'
@@ -97,13 +92,13 @@ def get_stories():
                 for agency in agencies:
                     agency_url = agency['url']
                     agency_stories_url = f"{agency_url}/api/stories"
-                    print("\nFetching stories for", agency['agency_url'])
+                    print("\nFetching stories for", agency_url)
                     fetch_stories_for_agency(agency_stories_url, category, region, date)
             else:
                 print('Failed to fetch agencies:', response.status_code)
         else:
             # Fetch stories for the specified ID
-            print("\nFetching stories for", url)
+            print("\nFetching stories for ", url)
             fetch_stories_for_agency(url, category, region, date)
     except Exception as e:
         print('Error:', e)
@@ -118,7 +113,6 @@ def fetch_stories_for_agency(url, category, region, date):
     if response.status_code == 200:
         stories = response.json().get('stories')
         if stories:
-            print('Stories:')
             for story in stories:
                 print('-----------------------------------')
                 print(f"Headline: {story.get('headline')}")
@@ -129,9 +123,9 @@ def fetch_stories_for_agency(url, category, region, date):
                 print(f"Details: {story.get('story_details')}")
                 print('-----------------------------------')
         else:
-            print('No stories found matching the criteria \nURL:', url)
+            print('No stories found matching the criteria')
     elif response.status_code == 404:
-        print('No stories found matching the criteria \nURL:', url)
+        print('No stories found matching the criteria')
     else:
         print('Failed to fetch stories. Status code:', response.status_code)
 
@@ -149,8 +143,11 @@ def get_agency_url(id_switch):
                 for agency in agencies:
                     if agency['agency_code'] == id_switch:
                         return f"{agency['url']}/api/stories"
+                print('No agency found using the ID:', id_switch, '\nPlease enter a valid agency ID.\nUse the list command to view the available agencies')
+                return None
             else:
-                print('No agencies found')
+                print('No agencies found ~ Agency list is empty.')
+                return None
         else:
             # If the request was not successful, print an error message
             print(f'Failed to fetch agency list. Status code: {response.status_code}')
