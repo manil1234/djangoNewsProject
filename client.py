@@ -2,7 +2,7 @@ import requests
 import json
 import urllib.parse
 
-BASE_URL = 'http://localhost:8000/'  # Update with your API base URL
+BASE_URL = 'https://ed19mk3.pythonanywhere.com/'  # Update with your API base URL
 session = requests.Session()  # Create a session object to maintain the connection and cookies
 CATEGORY_CHOICES = [
         ('pol', 'Politics'),
@@ -93,7 +93,10 @@ def get_stories():
                     agency_url = agency['url']
                     agency_stories_url = f"{agency_url}/api/stories"
                     print("\nFetching stories for", agency_url)
-                    fetch_stories_for_agency(agency_stories_url, category, region, date)
+                    try:
+                        fetch_stories_for_agency(agency_stories_url, category, region, date)
+                    except Exception as e:
+                        print('Error fetching stories for', agency_url, ':', e)
             else:
                 print('Failed to fetch agencies:', response.status_code)
         else:
@@ -188,13 +191,13 @@ def list_agency():
         # If an exception occurs, print the exception
         print(f'Error: {e}')
 
-def register_agency(agency_name, url, agency_code):
+def register_agency(agency_name, agency_url, agency_code):
     url = 'https://newssites.pythonanywhere.com/api/directory/'
     try:
         # Create a dictionary with the JSON data
         data = {
             'agency_name': agency_name,
-            'url': url,
+            'url': agency_url,
             'agency_code': agency_code
         }
         

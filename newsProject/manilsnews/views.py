@@ -127,6 +127,6 @@ def delete_story(request, key):
             story.delete()
             return JsonResponse({'message': 'Story deleted successfully.'}, status=200)
         else:
-            return JsonResponse({'message': 'Unauthorized to delete this story.'}, status=503)
+            return JsonResponse({'message': 'Unauthorised to delete this story.'}, status=503)
     except Exception as e:
         return JsonResponse({'message': str(e)}, status=503)
