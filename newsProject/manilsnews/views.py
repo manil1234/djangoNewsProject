@@ -98,7 +98,7 @@ def stories_view(request):
                     'story_cat': story.category,
                     'story_region': story.region,
                     'author': story.author.name,
-                    'story_date': str(story.date),  # Convert date to string
+                    'story_date': str(story.date.strftime('%d/%m/%Y')),  # Convert date to string
                     'story_details': story.details,
                 })
 

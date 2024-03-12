@@ -20,8 +20,8 @@ class Stories(models.Model):
     ]
 
     REGION_CHOICES = [
-        ('uk', 'UK'),
-        ('eu', 'EU'),
+        ('uk', 'United Kingdom'),
+        ('eu', 'Europe'),
         ('w', 'World'),
     ]
 
