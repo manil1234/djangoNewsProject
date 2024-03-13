@@ -86,6 +86,7 @@ def stories_view(request):
             if region != '*':
                 stories = stories.filter(region=region)
 
+            print(date)
             if date != '*':
                 stories = stories.filter(date__gte=date)
 
