@@ -134,4 +134,4 @@ def delete_story(request, key):
         except Exception as e:
             return JsonResponse({'message': str(e)}, status=503)
     else:
-        return JsonResponse({'message': 'User not logged in'}, status=503)
+        return HttpResponse(f'User not logged in!', content_type='text/plain', status=503)
