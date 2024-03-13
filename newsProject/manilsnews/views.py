@@ -117,18 +117,21 @@ def stories_view(request):
 
     
 @csrf_exempt
-@login_required
+# @login_required
 def delete_story(request, key):
-    try:
-        # Check if the story exists
-        story = Stories.objects.get(pk=key)
+    if request.is_authenticated:
+        try:
+            # Check if the story exists
+            story = Stories.objects.get(pk=key)
 
-        # Check if the logged-in user is the author of the story
-        if request.user == story.author.user:
-            # Delete the story
-            story.delete()
-            return JsonResponse({'message': 'Story deleted successfully.'}, status=200)
-        else:
-            return JsonResponse({'message': 'Unauthorised to delete this story.'}, status=503)
-    except Exception as e:
-        return JsonResponse({'message': str(e)}, status=503)
+            # Check if the logged-in user is the author of the story
+            if request.user == story.author.user:
+                # Delete the story
+                story.delete()
+                return JsonResponse({'message': 'Story deleted successfully.'}, status=200)
+            else:
+                return JsonResponse({'message': 'Unauthorised to delete this story.'}, status=503)
+        except Exception as e:
+            return JsonResponse({'message': str(e)}, status=503)
+    else:
+        return JsonResponse({'message': 'User not logged in'}, status=503)
