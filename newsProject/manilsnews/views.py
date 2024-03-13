@@ -7,7 +7,7 @@ from django.http import JsonResponse
 from django.core.exceptions import ValidationError
 from .models import Stories, Author
 import json
-import requests
+from datetime import datetime
 
 @csrf_exempt  # Disable CSRF for this view
 def login_view(request):
@@ -88,7 +88,8 @@ def stories_view(request):
 
             print(date)
             if date != '*':
-                stories = stories.filter(date__gte=date)
+                date_obj = datetime.strptime(date, '%d/%m/%Y')
+                stories = stories.filter(date__gte=date_obj)
 
             # Prepare response data
             response_data = []
