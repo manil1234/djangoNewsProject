@@ -1,23 +1,28 @@
 import requests
 import json
 import urllib.parse
+import argparse
+# from datetime import datetime
+from tabulate import tabulate
 
-BASE_URL = 'https://ed19mk3.pythonanywhere.com/'  # Update with your API base URL
+BASE_URL = 'https://ed19mk3.pythonanywhere.com'  # Update with your API base URL
+# BASE_URL = 'https://sc20nk.pythonanywhere.com'
+# BASE_URL = 'http://127.0.0.1:8000/'  # Update with your API base URL
 session = requests.Session()  # Create a session object to maintain the connection and cookies
-CATEGORY_CHOICES = [
-        ('pol', 'Politics'),
-        ('art', 'Art'),
-        ('tech', 'Technology'),
-        ('trivia', 'Trivia'),
-    ]
-REGION_CHOICES = [
-        ('uk', 'UK'),
-        ('eu', 'EU'),
-        ('w', 'World'),
-    ]
+CATEGORY_CHOICES = {
+    'pol': 'Politics',
+    'art': 'Art',
+    'tech': 'Technology',
+    'trivia': 'Trivia',
+}
+REGION_CHOICES = {
+    'uk': 'United Kingdom',
+    'eu': 'Europe',
+    'w': 'World',
+}
 
-def login(input_username, password):
-    url = BASE_URL + 'api/login'
+def login(url, input_username, password):
+    url = 'https://' + url + '/api/login'
     # Construct the data in application/x-www-form-urlencoded format
     data = {'username': input_username, 'password': password}
     encoded_data = urllib.parse.urlencode(data)
@@ -26,17 +31,32 @@ def login(input_username, password):
     print(response.status_code, ': ', response.text)  # Print server response
     
 def perform_logout():
-    url = BASE_URL + 'api/logout'
+    url = BASE_URL + '/api/logout'
     response = session.post(url)  # Use session.post instead of requests.post
     print(response.status_code, ': ', response.text)  # Print server response
 
 def post_story():
-    url = BASE_URL + 'api/stories'
+    url = BASE_URL + '/api/stories'
     headline = input('Enter headline: ')
-    print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES])
-    category = input('Enter category: ')
-    print('Valid regions:', [choice[0] for choice in REGION_CHOICES])
+    print('Valid categories:', list(CATEGORY_CHOICES.keys()))
+    category_input = input('Enter category: ')
+    # Check if the input is a key in the CATEGORY_CHOICES dictionary
+    if category_input in CATEGORY_CHOICES:
+        category = category_input
+    else:
+        # Check if the input matches any full category name, if so, get its key
+        category = next((key for key, value in CATEGORY_CHOICES.items() if value.lower() == category_input.lower()), None)
+        if not category:
+            print('Invalid category. Please choose from:', list(CATEGORY_CHOICES.keys()))
+            return
+
+    print('Valid regions:', list(REGION_CHOICES.keys()))
     region = input('Enter region: ')
+    # Validate user input
+    if region not in REGION_CHOICES:
+        print('Invalid region. Please choose from:', list(REGION_CHOICES.keys()))
+        return
+    
     details = input('Enter details: ')
     
     # Create a dictionary with the JSON data
@@ -58,24 +78,12 @@ def post_story():
     print(response.status_code, ': ', response.text)  # Print server response
 
 
-def get_stories():
-    id_input = input('Enter ID of the news service (press Enter for none): ')
-    id_switch = id_input.strip().upper() if id_input else None
-
-    print('Enter the criteria to get stories')
-    print('Valid categories:', [choice[0] for choice in CATEGORY_CHOICES], ' or * for ALL')
-    category = input('Enter category (press Enter for *): ')
-    category = category.strip().lower() if category else '*'
-
-    print('Valid regions:', [choice[0] for choice in REGION_CHOICES], ' or * for ALL')
-    region = input('Enter region (press Enter for *): ')
-    region = region.strip().lower() if region else '*'
-
-    date = input('Enter date (YYYY-MM-DD) or * for ALL (press Enter for *): ')
-    date = date.strip().lower() if date else '*'
-
-    if id_switch:
-        url = get_agency_url(id_switch)
+def get_stories(id_input=None, category="*", region="*", date="*"):
+    # print(category, '\n', region, '\n', date)
+    total_stories = 0  # Counter variable for total fetched stories
+    if id_input:
+        url = get_agency_url(id_input)
+        # url = 'http://127.0.0.1:8000/'
         if url is None:
             return
         fetch_all_agencies = False
@@ -90,11 +98,15 @@ def get_stories():
             if response.status_code == 200:
                 agencies = response.json()
                 for agency in agencies:
+                    if total_stories >= 20:  # Check if the limit is reached
+                        break
                     agency_url = agency['url']
                     agency_stories_url = f"{agency_url}/api/stories"
                     print("\nFetching stories for", agency_url)
                     try:
-                        fetch_stories_for_agency(agency_stories_url, category, region, date)
+                        # Increment total stories fetched by the count for this agency
+                        count = fetch_stories_for_agency(agency_stories_url, category, region, date)
+                        total_stories += count
                     except Exception as e:
                         print('Error fetching stories for', agency_url, ':', e)
             else:
@@ -107,6 +119,10 @@ def get_stories():
         print('Error:', e)
 
 def fetch_stories_for_agency(url, category, region, date):
+    if not date: date = '*'
+    if not category: category = '*'
+    if not region: region = '*'
+    print('Fetching stories...', category, region, date)
     data = {
         'story_cat': category,
         'story_region': region,
@@ -116,21 +132,32 @@ def fetch_stories_for_agency(url, category, region, date):
     if response.status_code == 200:
         stories = response.json().get('stories')
         if stories:
-            for story in stories:
-                print('-----------------------------------')
-                print(f"Headline: {story.get('headline')}")
-                print(f"Category: {story.get('story_cat')}")
-                print(f"Region: {story.get('story_region')}")
-                print(f"Author: {story.get('author')}")
-                print(f"Date: {story.get('story_date')}")
-                print(f"Details: {story.get('story_details')}")
-                print('-----------------------------------')
+            count = min(len(stories), 20)  # Limit to a maximum of 20 stories
+
+            table_data = []
+            for story in stories[:count]:
+                table_data.append([
+                    story.get('key'),
+                    story.get('headline'),
+                    CATEGORY_CHOICES.get(story.get('story_cat'), 'Unknown'),
+                    REGION_CHOICES.get(story.get('story_region'), 'Unknown'),
+                    story.get('author'),
+                    story.get('story_date'),
+                    story.get('story_details')
+                ])
+
+            headers = ["Key", "Headline", "Category", "Region", "Author", "Date", "Details"]
+            print(tabulate(table_data, headers=headers, tablefmt="fancy_grid"))
+            return count
         else:
             print('No stories found matching the criteria')
+            return 0
     elif response.status_code == 404:
         print('No stories found matching the criteria')
+        return 0
     else:
         print('Failed to fetch stories. Status code:', response.status_code)
+        return 0
 
 def get_agency_url(id_switch):
     url = 'https://newssites.pythonanywhere.com/api/directory/'
@@ -160,7 +187,7 @@ def get_agency_url(id_switch):
 
 
 def delete_story(key):
-    url = BASE_URL + f'stories/{key}/'
+    url = BASE_URL + f'/api/stories/{key}'
     response = session.delete(url)
     if response.status_code == 200:
         print('Story deleted successfully')
@@ -223,14 +250,18 @@ def register_agency(agency_name, agency_url, agency_code):
 
 def main():
     while True:
-        command = input('• login\n• logout\n• post\n• news\n• delete\n• list\n• register\n- Enter command: ')
-        if command.lower() == 'login':
+        command = input('Client for: ed19mk3.pythonanywhere.com\n• login\n• logout\n• post\n• news\n• delete\n• list\n• register\n- Enter command: ')
+        args = command.split()
+        if args[0].lower() == 'login':
             if session.cookies.get('sessionid'):  # Check if the session cookie exists
                 print(f'Already logged in!')
             else:
-                input_username = input('Enter username: ')
-                password = input('Enter password: ')
-                login(input_username, password)
+                if len(args) >= 2:
+                    input_username = input('Enter username: ')
+                    password = input('Enter password: ')
+                    login(args[1], input_username, password)
+                else:
+                    print('Please enter a agency URL')
         elif command.lower() == 'logout':
             if session.cookies.get('sessionid'):  # Check if the session cookie exists
                 perform_logout()
@@ -238,11 +269,17 @@ def main():
                 print('Not logged in')
         elif command.lower() == 'post':
             post_story()
-        elif command.lower() == 'news':
-            get_stories()
+        elif args[0].lower() == 'news':
+            parser = argparse.ArgumentParser(description='News Service Command Line Interface')
+            parser.add_argument('-id', '--id', help='ID of the news service')
+            parser.add_argument('-cat', '--category', help='Category of the news')
+            parser.add_argument('-reg', '--region', help='Region of the news')
+            parser.add_argument('-date', '--date', help='Date of the news')
+            args = parser.parse_args(args[1:])
+            get_stories(args.id, args.category, args.region, args.date)
         elif command.lower() == 'delete':
             key = input('Enter the story key to delete: ')
-            delete_story(key)
+            delete_story(int(key))
         elif command.lower() == 'list':
             print('Fetching agency list...')
             list_agency()

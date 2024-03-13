@@ -32,13 +32,12 @@ def login_view(request):
         return HttpResponse('Method Not Allowed', content_type='text/plain', status=405)  # Return plain text response for non-POST requests
 
 @csrf_exempt  # Disable CSRF for this view
-@login_required
 def logout_view(request):
-    try:
+    if request.user.is_authenticated:
         logout(request)  # Log out the user
-        return HttpResponse('Logged out successfully.')  # Return 200 OK with success message
-    except:
-        return HttpResponse('Not logged in', status=401)  # Return 401 Unauthorized if user is not logged in
+        return HttpResponse('Logged out successfully.', content_type='text/plain', status=200)  # Return 200 OK with success message
+    else:
+        return HttpResponse('Not logged in', content_type='text/plain', status=401)  # Return 401 Unauthorized if user is not logged in
 
 @csrf_exempt
 def stories_view(request):
@@ -64,10 +63,9 @@ def stories_view(request):
 
                 # Create Story
                 Stories.objects.create(headline=headline, category=category, region=region, details=details, author=author)
-
-                return JsonResponse({'message': 'CREATED'}, status=201)
+                return HttpResponse(f'CREATED.', content_type='text/plain', status=201)
             except Exception as e:
-                return JsonResponse({'message': str(e)}, status=503)
+                return HttpResponse(f'Could not post story. ' + str(e), content_type='text/plain', status=503)
         else:   # If the user is not logged in
             return HttpResponse('User not logged in', content_type='text/plain', status=503)  # Unauthorized
     elif request.method == 'GET':
@@ -86,7 +84,6 @@ def stories_view(request):
             if region != '*':
                 stories = stories.filter(region=region)
 
-            print(date)
             if date != '*':
                 date_obj = datetime.strptime(date, '%d/%m/%Y')
                 stories = stories.filter(date__gte=date_obj)
@@ -107,18 +104,17 @@ def stories_view(request):
             if response_data:
                 return JsonResponse({'stories': response_data}, status=200)
             else:
-                return JsonResponse({'message': 'No stories found'}, status=404)
+                return HttpResponse('No stories found', content_type='text/plain', status=404)
         except ValidationError as ve:
-            return JsonResponse({'message': str(ve)}, status=400)  # Bad Request
+            return HttpResponse(str(ve), content_type='text/plain', status=400)  # Bad Request
         except Exception as e:
-            return JsonResponse({'message': str(e)}, status=500)  # Internal Server Error
+            return HttpResponse(str(e), content_type='text/plain', status=500)  # Internal Server Error
     else:
-        return JsonResponse({'message': 'Method Not Allowed'}, status=405)
+        return HttpResponse('Method Not Allowed', content_type='text/plain', status=405)
 
     
 @csrf_exempt
 def delete_story(request, key):
-    print("\n\n", request.user.is_authenticated, "\n\n")
     if request.user.is_authenticated:
         try:
             # Check if the story exists
@@ -128,10 +124,10 @@ def delete_story(request, key):
             if request.user == story.author.user:
                 # Delete the story
                 story.delete()
-                return JsonResponse({'message': 'Story deleted successfully.'}, status=200)
+                return HttpResponse(f'Story deleted successfully.', content_type='text/plain', status=200)
             else:
-                return JsonResponse({'message': 'Unauthorised to delete this story.'}, status=503)
+                return HttpResponse(f'User unauthorised to delete this story!', content_type='text/plain', status=503)
         except Exception as e:
-            return JsonResponse({'message': str(e)}, status=503)
+            return HttpResponse(f'Error: ' + str(e), content_type='text/plain', status=503)
     else:
         return HttpResponse(f'User not logged in!', content_type='text/plain', status=503)
