@@ -119,7 +119,7 @@ def stories_view(request):
 @csrf_exempt
 # @login_required
 def delete_story(request, key):
-    if request.is_authenticated:
+    if request.user.is_authenticated:
         try:
             # Check if the story exists
             story = Stories.objects.get(pk=key)
