@@ -5,9 +5,9 @@ import argparse
 # from datetime import datetime
 from tabulate import tabulate
 
-BASE_URL = 'https://ed19mk3.pythonanywhere.com'  # Update with your API base URL
-# BASE_URL = 'https://sc20nk.pythonanywhere.com'
-# BASE_URL = 'http://127.0.0.1:8000/'  # Update with your API base URL
+BASE_URL = None
+# BASE_URL = 'ed19mk3.pythonanywhere.com'  
+# BASE_URL = 'http://127.0.0.1:8000/'  
 session = requests.Session()  # Create a session object to maintain the connection and cookies
 CATEGORY_CHOICES = {
     'pol': 'Politics',
@@ -21,21 +21,41 @@ REGION_CHOICES = {
     'w': 'World',
 }
 
-def login(url, input_username, password):
-    url = 'https://' + url + '/api/login'
+def login(input_username, password):
+    global BASE_URL
+    if BASE_URL is None:
+        print('Please enter a valid Agency URL')
+        return
+    
+    url = BASE_URL + '/api/login'
     # Construct the data in application/x-www-form-urlencoded format
     data = {'username': input_username, 'password': password}
     encoded_data = urllib.parse.urlencode(data)
     headers = {'Content-Type': 'application/x-www-form-urlencoded'}
-    response = session.post(url, data=encoded_data, headers=headers)
-    print(response.status_code, ': ', response.text)  # Print server response
+    try:
+        response = session.post(url, data=encoded_data, headers=headers)
+    except Exception as e:
+        print('Invalid URL: Please enter a valid Agency URL')
+        BASE_URL = None
+        return
+    if response.status_code != 200:
+        BASE_URL = None
+    print(response.status_code, ': ', response.text)
     
 def perform_logout():
+    global BASE_URL
     url = BASE_URL + '/api/logout'
-    response = session.post(url)  # Use session.post instead of requests.post
+    response = session.post(url) 
+    if response.status_code == 200:
+        BASE_URL = None
     print(response.status_code, ': ', response.text)  # Print server response
 
 def post_story():
+    global BASE_URL
+    if BASE_URL is None:
+        print('Please enter a valid Agency URL')
+        return
+    
     url = BASE_URL + '/api/stories'
     headline = input('Enter headline: ')
     print('Valid categories:', list(CATEGORY_CHOICES.keys()))
@@ -79,10 +99,9 @@ def post_story():
 
 
 def get_stories(id_input=None, category="*", region="*", date="*"):
-    # print(category, '\n', region, '\n', date)
     total_stories = 0  # Counter variable for total fetched stories
     if id_input:
-        url = get_agency_url(id_input)
+        url = get_agency_url(id_input.upper().strip('"'))
         # url = 'http://127.0.0.1:8000/'
         if url is None:
             return
@@ -102,7 +121,6 @@ def get_stories(id_input=None, category="*", region="*", date="*"):
                         break
                     agency_url = agency['url']
                     agency_stories_url = f"{agency_url}/api/stories"
-                    print("\nFetching stories for", agency_url)
                     try:
                         # Increment total stories fetched by the count for this agency
                         count = fetch_stories_for_agency(agency_stories_url, category, region, date)
@@ -113,22 +131,24 @@ def get_stories(id_input=None, category="*", region="*", date="*"):
                 print('Failed to fetch agencies:', response.status_code)
         else:
             # Fetch stories for the specified ID
-            print("\nFetching stories for ", url)
             fetch_stories_for_agency(url, category, region, date)
     except Exception as e:
         print('Error:', e)
 
 def fetch_stories_for_agency(url, category, region, date):
-    if not date: date = '*'
+    if not date: date = '*' 
     if not category: category = '*'
     if not region: region = '*'
-    print('Fetching stories...', category, region, date)
     data = {
-        'story_cat': category,
-        'story_region': region,
-        'story_date': date
+        'story_cat': category.strip('"'),
+        'story_region': region.strip('"'),
+        'story_date': date.strip('"')
     }
     response = requests.get(url, params=data)
+    urls = []
+    urls.append([url])
+    headersURL = ["URL"]
+    print(tabulate(urls, headers=headersURL, tablefmt="grid"))
     if response.status_code == 200:
         stories = response.json().get('stories')
         if stories:
@@ -179,21 +199,20 @@ def get_agency_url(id_switch):
                 print('No agencies found ~ Agency list is empty.')
                 return None
         else:
-            # If the request was not successful, print an error message
             print(f'Failed to fetch agency list. Status code: {response.status_code}')
     except Exception as e:
-        # If an exception occurs, print the exception
         print(f'Error: {e}')
 
 
 def delete_story(key):
+    global BASE_URL
+    if BASE_URL is None:
+        print('Please enter a valid Agency URL')
+        return
+    
     url = BASE_URL + f'/api/stories/{key}'
     response = session.delete(url)
-    if response.status_code == 200:
-        print('Story deleted successfully')
-    else:
-        print(f'Failed to delete story. Status code: {response.status_code}')
-        print(f'Response: {response.text}')
+    print(response.status_code, ': ', response.text)
 
 def list_agency():
     url = 'https://newssites.pythonanywhere.com/api/directory/'
@@ -212,10 +231,8 @@ def list_agency():
             else:
                 print('No agencies found')
         else:
-            # If the request was not successful, print an error message
             print(f'Failed to fetch agency list. Status code: {response.status_code}')
     except Exception as e:
-        # If an exception occurs, print the exception
         print(f'Error: {e}')
 
 def register_agency(agency_name, agency_url, agency_code):
@@ -231,13 +248,13 @@ def register_agency(agency_name, agency_url, agency_code):
         # Convert the dictionary to a JSON string
         json_data = json.dumps(data)
         
-        # Set the Content-Type header to indicate JSON payload
+        # Set the Content-Type header to JSON payload
         headers = {'Content-Type': 'application/json'}
         
-        # Send the JSON payload with the headers
+        # Send  JSON payload with  headers
         response = requests.post(url, data=json_data, headers=headers)
         
-        # Check if the request was successful (status code 201)
+        # Check if  request was successful
         if response.status_code == 201:
             print('Agency registered successfully')
         else:
@@ -249,8 +266,14 @@ def register_agency(agency_name, agency_url, agency_code):
         print(f'Error: {e}')
 
 def main():
+    global BASE_URL
     while True:
-        command = input('Client for: ed19mk3.pythonanywhere.com\n• login\n• logout\n• post\n• news\n• delete\n• list\n• register\n- Enter command: ')
+        print('-------------------------------------------------------------------------------------------------------------------------------------------------')
+        if BASE_URL:
+            print('Client is connected to:', BASE_URL)
+        else:
+            print('Client is not connected to an Agency. \nPlease connect to an Agency using the login command. Use -> ed19mk3.pythonanywhere.com')
+        command = input('• login\n• logout\n• post\n• news\n• delete\n• list\n• register\n- Enter command: ')
         args = command.split()
         if args[0].lower() == 'login':
             if session.cookies.get('sessionid'):  # Check if the session cookie exists
@@ -259,15 +282,16 @@ def main():
                 if len(args) >= 2:
                     input_username = input('Enter username: ')
                     password = input('Enter password: ')
-                    login(args[1], input_username, password)
+                    BASE_URL = 'https://' + args[1]
+                    login(input_username, password)
                 else:
                     print('Please enter a agency URL')
-        elif command.lower() == 'logout':
+        elif args[0].lower() == 'logout':
             if session.cookies.get('sessionid'):  # Check if the session cookie exists
                 perform_logout()
             else:
                 print('Not logged in')
-        elif command.lower() == 'post':
+        elif args[0].lower() == 'post':
             post_story()
         elif args[0].lower() == 'news':
             parser = argparse.ArgumentParser(description='News Service Command Line Interface')
@@ -277,13 +301,14 @@ def main():
             parser.add_argument('-date', '--date', help='Date of the news')
             args = parser.parse_args(args[1:])
             get_stories(args.id, args.category, args.region, args.date)
-        elif command.lower() == 'delete':
-            key = input('Enter the story key to delete: ')
-            delete_story(int(key))
-        elif command.lower() == 'list':
-            print('Fetching agency list...')
+        elif args[0].lower() == 'delete':
+            if len(args) >= 2:
+                delete_story(int(args[1]))
+            else:
+                print('Please enter the key of the story to delete.')
+        elif args[0].lower() == 'list':
             list_agency()
-        elif command.lower() == 'register':
+        elif args[0].lower() == 'register':
             agency_name = input('Enter agency name: ')
             url = input('Enter agency URL: ')
             agency_code = input('Enter agency code: ')
